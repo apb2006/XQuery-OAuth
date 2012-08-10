@@ -1,3 +1,6 @@
+OAuth implementation written in XQuery. Targeting BaseX 7.4
+
+# original readme
 Hello,
 
 This repository contains an OAuth implementation written in XQuery. It

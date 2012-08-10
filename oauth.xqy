@@ -1,15 +1,13 @@
-xquery version "1.0-ml";
-
-module namespace oa="http://marklogic.com/ns/oauth";
-
-declare namespace xh="xdmp:http";
-
-declare default function namespace "http://www.w3.org/2005/xpath-functions";
-
-declare option xdmp:mapping "false";
-
 (:
-  let $service :=
+: an OAuth implementation written in XQuery for BaseX 7.4  
+: based on http://norman.walsh.name/2010/09/25/oauth
+:)
+module namespace oa="http://basex.org/ns/oauth";
+import module namespace crypto="http://expath.org/ns/crypto";
+
+declare function oa:twitter-service($CONSUMER-KEY as xs:string,
+                                    $CONSUMER-SECRET as xs:string){
+
      <oa:service-provider realm="">
        <oa:request-token>
          <oa:uri>http://twitter.com/oauth/request_token</oa:uri>
@@ -31,11 +29,11 @@ declare option xdmp:mapping "false";
        </oa:signature-methods>
        <oa:oauth-version>1.0</oa:oauth-version>
        <oa:authentication>
-         <oa:consumer-key>YOUR-CONSUMER-KEY</oa:consumer-key>
-         <oa:consumer-key-secret>YOUR-CONSUMER-SECRET</oa:consumer-key-secret>
+         <oa:consumer-key>{$CONSUMER-KEY}</oa:consumer-key>
+         <oa:consumer-key-secret>{$CONSUMER-SECRET}</oa:consumer-key-secret>
        </oa:authentication>
      </oa:service-provider>
-:)
+};
 
 declare function oa:timestamp() as xs:unsignedLong {
   let $epoch := xs:dateTime('1970-01-01T00:00:00Z')
@@ -51,12 +49,7 @@ declare function oa:timestamp() as xs:unsignedLong {
 };
 
 declare function oa:sign($key as xs:string, $data as xs:string) as xs:string {
-  let $uri := concat("http://localhost:8190/cgi-bin/hmac-sha1?",
-                     "key=", encode-for-uri($key),
-                     "&amp;data=",encode-for-uri($data))
-  let $resp := xdmp:http-get($uri)
-  return
-    string($resp/digest/hashb64)
+    crypto:hmac($data,$key,'SHA1','base64')
 };
 
 declare function oa:signature-method(
@@ -149,8 +142,8 @@ declare function oa:signed-request(
 as element(oa:response)
 {
   let $realm      := string($service/@realm)
-  let $noncei     := xdmp:hash64(concat(current-dateTime(),string(xdmp:random())))
-  let $nonce      := xdmp:integer-to-hex($noncei)
+
+  let $nonce      :=convert:integer-to-base(random:integer(),16)
   let $stamp      := oa:timestamp()
   let $key        := string($service/oa:authentication/oa:consumer-key)
   let $sigkey     := concat($service/oa:authentication/oa:consumer-key-secret,
@@ -224,29 +217,17 @@ as element(oa:response)
                            if (empty($uriparam)) then ''
                            else concat("?",string-join($uriparam,"&amp;")))
 
-   let $data     := ()
 
-   let $options  := <xh:options>
-                      <xh:headers>
-                        <xh:Authorization>{$authheader}</xh:Authorization>
-                      </xh:headers>
-                      { $data }
-                    </xh:options>
 
-   let $tokenreq := if ($httpmethod = "GET")
-                    then xdmp:http-get($requri, $options)
-                    else xdmp:http-post($requri, $options)
+   let $request  := <http:request method = "{$httpmethod}">
+                       <http:header name="Authorization" value="{$authheader}"/>
+                     </http:request>
 
-   (:
-   let $trace := xdmp:log(concat("requri: ", $requri))
-   let $trace := xdmp:log(concat("sigbse: ", $sigbase))
-   let $trace := xdmp:log($options)
-   let $trace := xdmp:log($tokenreq[2])
-   :)
-
+   let $tokenreq :=http:send-request($request,$requri)
+                    
   return
     <oa:response>
-      { if (string($tokenreq[1]/xh:code) != "200")
+      { if (string($tokenreq[1]/@status) != "200")
         then
           (<oa:error>{$tokenreq[1]}</oa:error>,
            <oa:error-body>{$tokenreq[2]}</oa:error-body>)
