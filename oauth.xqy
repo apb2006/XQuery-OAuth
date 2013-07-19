@@ -10,18 +10,18 @@ declare function oa:twitter-service($CONSUMER-KEY as xs:string,
 
      <oa:service-provider realm="">
        <oa:request-token>
-         <oa:uri>http://twitter.com/oauth/request_token</oa:uri>
+         <oa:uri>https://api.twitter.com/oauth/request_token</oa:uri>
          <oa:method>GET</oa:method>
        </oa:request-token>
        <oa:user-authorization>
-         <oa:uri>http://twitter.com/oauth/authorize</oa:uri>
+         <oa:uri>https://api.twitter.com/oauth/authorize</oa:uri>
        </oa:user-authorization>
        <oa:user-authentication>
-         <oa:uri>http://twitter.com/oauth/authenticate</oa:uri>
+         <oa:uri>https://api.twitter.com/oauth/authenticate</oa:uri>
          <oa:additional-params>force_login=true</oa:additional-params>
        </oa:user-authentication>
        <oa:access-token>
-         <oa:uri>http://twitter.com/oauth/access_token</oa:uri>
+         <oa:uri>https://api.twitter.com/oauth/access_token</oa:uri>
          <oa:method>POST</oa:method>
        </oa:access-token>
        <oa:signature-methods>
